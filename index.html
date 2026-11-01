@@ -125,8 +125,7 @@
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
 
-    const params = new URLSearchParams(window.location.search);
-    let stageId = params.get('stage_id') || '1'; // 預設從第 1 關開始
+    let stageId = '1'; // 預設從第 1 關開始
     let playerName = localStorage.getItem('dpp_player_name') || '';
 
     function showStatus(msg) {
@@ -147,7 +146,6 @@
     }
 
     function initGame() {
-      // 如果還沒有填寫偵探名稱，先顯示註冊畫面
       if (!playerName) {
         showPlayerNamePrompt();
         return;
@@ -191,7 +189,7 @@
       content.innerHTML = `
         <h2 style="text-align:center; color:#7ee0a1;">🎉 恭喜 ${escapeHTML(playerName)} </h2>
         <p style="text-align:center; line-height:1.8;">你已成功通過所有大鵬灣的考驗，解開了所有隱藏的秘密，完成了這趟精彩的實境解謎之旅！</p>
-        <button class="btn-custom" onclick="localStorage.removeItem('dpp_player_name'); location.href='?stage_id=1';">重新開始遊戲</button>
+        <button class="btn-custom" onclick="localStorage.removeItem('dpp_player_name'); location.reload();">重新開始遊戲</button>
       `;
     }
 
@@ -282,7 +280,6 @@
         resultBox.textContent = '正在檢查你的答案...';
         resultBox.style.color = '#d9e8e8';
 
-        // 發送 POST 請求驗證答案
         fetch(API_URL, {
           method: 'POST',
           body: new URLSearchParams({
@@ -297,7 +294,6 @@
           handleValidationResult(result, nextStageId);
         })
         .catch(err => {
-          // 若有 CORS 限制，改用輪詢機制取得 Cache 結果
           pollAnswerResult(requestId, nextStageId);
         });
       });
@@ -347,9 +343,8 @@
       if (result && result.success && result.correct) {
         resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
         resultBox.style.color = '#7ee0a1';
-        submitBtn.style.display = 'none'; // 隱藏送出按鈕
+        submitBtn.style.display = 'none';
 
-        // 產生進入下一關的按鈕
         const targetNext = nextStageId && nextStageId !== '' ? nextStageId : (Number(stageId) + 1);
         if (Number(targetNext) <= 5) {
           nextContainer.innerHTML = `<button class="btn-custom" onclick="stageId='${targetNext}'; initGame();">前往第 ${targetNext} 關</button>`;
