@@ -78,8 +78,91 @@
     }
   </style>
 </head>
+<script>
+  // Google Apps Script Web App 網址
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
 
-<body>
+  // 顯示 API 連線狀態
+  function showStatus(message) {
+    const status = document.getElementById('api-status');
+    if (status) {
+      status.textContent = message;
+    }
+  }
+
+  // 建立 JSONP 請求
+  function loadGameData() {
+    showStatus('正在連接遊戲資料庫...');
+
+    const callbackName = 'gameCallback';
+
+    window[callbackName] = function(data) {
+      if (data.success) {
+        showStatus('遊戲資料庫連線成功！');
+
+        console.log('取得的關卡資料：', data.stages);
+
+        const list = document.getElementById('stage-list');
+
+        if (data.stages.length === 0) {
+          list.innerHTML = '<p>目前尚未開放關卡。</p>';
+          return;
+        }
+
+        list.innerHTML = data.stages
+          .filter(stage => String(stage.enabled).toUpperCase() === 'TRUE')
+          .map(stage => `
+            <div style="
+              padding:12px;
+              margin:10px 0;
+              border:1px solid #54717a;
+              border-radius:8px;
+              text-align:left;
+            ">
+              <strong>${escapeHTML(stage.title)}</strong>
+              <p>${escapeHTML(stage.story)}</p>
+            </div>
+          `).join('');
+
+      } else {
+        showStatus('遊戲資料讀取失敗。');
+      }
+
+      delete window[callbackName];
+    };
+
+    const script = document.createElement('script');
+
+    script.src = API_URL +
+      '?callback=' + callbackName +
+      '&t=' + Date.now();
+
+    script.onerror = function() {
+      showStatus('無法連接遊戲資料庫，請稍後再試。');
+      delete window[callbackName];
+    };
+
+    document.body.appendChild(script);
+  }
+
+  // 避免試算表內容被當成 HTML 執行
+  function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(char) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char];
+    });
+  }
+
+  // 網頁載入後自動讀取資料
+  window.addEventListener('load', loadGameData);
+</script>
+  
+  <body>
   <main class="container">
 
     <div class="tag">DAPPENG BAY · QR MYSTERY GAME</div>
@@ -93,7 +176,9 @@
 
     <section class="panel">
 
-      <p class="status">GAME SYSTEM</p>
+      <p class="status" id="api-status">
+  正在連接遊戲資料庫...
+</p>
 
       <h2>冒險即將開始</h2>
 
@@ -101,7 +186,7 @@
         請準備好手機，開啟定位功能，<br>
         跟隨線索完成每一道挑戰。
       </p>
-
+<div id="stage-list"></div>
       <button class="start-button" type="button">
         即將開放
       </button>
