@@ -100,6 +100,46 @@
       background: rgba(255, 255, 255, 0.2);
     }
 
+    /* 字卡排序樣式 */
+    .card-slot-container {
+      min-height: 60px;
+      background: #102b35;
+      border: 2px dashed #54717a;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .card-pool-container {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .puzzle-card {
+      background: #d0b27b;
+      color: #172e35;
+      font-weight: bold;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.1s;
+    }
+
+    .puzzle-card:active {
+      transform: scale(0.95);
+    }
+
     input[type="text"] {
       width: 100%;
       box-sizing: border-box;
@@ -235,10 +275,10 @@
         showStatus(`偵探：${escapeHTML(playerName)} | 第 ${escapeHTML(stage.stage_id)} 關`);
 
         const isChoice = stage.task_type === 'choice';
-        const taskTypeName = isChoice ? '選擇題任務' : '解謎任務';
+        const isPuzzle = stage.stage_id == '5'; // 第 5 關為字卡排序題
+        const taskTypeName = isChoice ? '選擇題任務' : (isPuzzle ? '字卡排序任務' : '解謎任務');
         const imageUrl = stage.image_url ? stage.image_url : '';
 
-        // 整理選擇題選項
         let optionsHTML = '';
         if (isChoice) {
           let choices = [];
@@ -253,6 +293,23 @@
               ${escapeHTML(opt)}
             </button>
           `).join('');
+        } else if (isPuzzle) {
+          // 第 5 關字卡互動介面
+          optionsHTML = `
+            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">已排列的句子：</div>
+            <div id="card-slot" class="card-slot-container">
+              <span style="color:#7ee0a1; font-size:13px;" id="slot-placeholder">點擊下方字卡進行排列</span>
+            </div>
+            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">可用字卡（點擊放入）：</div>
+            <div id="card-pool" class="card-pool-container">
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '朋')">朋</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '想')">想</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '你')">你</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '我')">我</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '當')">當</button>
+            </div>
+            <button type="button" id="answer-submit" class="btn-custom" onclick="submitPuzzle('${escapeHTML(stage.stage_id)}', '${escapeHTML(stage.next_stage_id)}')">送出答案</button>
+          `;
         } else {
           optionsHTML = `
             <form id="answer-form">
@@ -295,7 +352,7 @@
           <div id="next-stage-container" style="margin-top:15px;"></div>
         `;
 
-        if (!isChoice) {
+        if (!isChoice && !isPuzzle) {
           document.getElementById('answer-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const ansVal = document.getElementById('player-answer').value.trim();
@@ -313,6 +370,44 @@
         showStatus('無法連接遊戲資料庫，請稍後再試。');
       };
       document.body.appendChild(script);
+    }
+
+    // 第 5 關字卡互動邏輯
+    function pickCard(btn, char) {
+      const slot = document.getElementById('card-slot');
+      const placeholder = document.getElementById('slot-placeholder');
+      if (placeholder) placeholder.remove();
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'puzzle-card';
+      card.textContent = char;
+      card.onclick = function() {
+        // 點擊已選字卡放回可用區
+        document.getElementById('card-pool').appendChild(card);
+        card.remove();
+        if (slot.children.length === 0) {
+          slot.innerHTML = '<span style="color:#7ee0a1; font-size:13px;" id="slot-placeholder">點擊下方字卡進行排列</span>';
+        }
+      };
+      slot.appendChild(card);
+      btn.remove();
+    }
+
+    function submitPuzzle(currentStageId, nextStageId) {
+      const slot = document.getElementById('card-slot');
+      const cards = slot.getElementsByClassName('puzzle-card');
+      let combinedAnswer = '';
+      for (let c of cards) {
+        combinedAnswer += c.textContent;
+      }
+
+      if (!combinedAnswer) {
+        alert('請先排列字卡！');
+        return;
+      }
+
+      submitAnswer(currentStageId, combinedAnswer, nextStageId);
     }
 
     function submitAnswer(currentStageId, answerVal, nextStageId) {
@@ -388,7 +483,7 @@
       if (result && result.success && result.correct) {
         resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
         resultBox.style.color = '#7ee0a1';
-        actionArea.style.display = 'none'; // 答對後隱藏輸入框/選擇按鈕
+        actionArea.style.display = 'none';
 
         const targetNext = nextStageId && nextStageId !== '' && nextStageId !== 'end' ? nextStageId : (Number(stageId) + 1);
         if (Number(targetNext) <= 5) {
