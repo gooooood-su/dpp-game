@@ -203,6 +203,7 @@
     name="stage_id"
     value="${escapeHTML(stage.stage_id)}"
   >
+  <input type="hidden" name="request_id" id="answer-request-id">
 
   <input
     type="text"
@@ -285,13 +286,17 @@ window.addEventListener('message', function(event) {
 
 
 document.addEventListener('submit', function(event) {
+  if (event.target.id !== 'answer-form') return;
 
-  if (event.target.id !== 'answer-form') {
-    return;
-  }
-
+  const form = event.target;
   const button = document.getElementById('answer-submit');
   const resultBox = document.getElementById('answer-result');
+  const requestInput = document.getElementById('answer-request-id');
+
+  // 產生本次提交專用的查詢編號
+  const requestId = crypto.randomUUID();
+
+  requestInput.value = requestId;
 
   if (button) {
     button.disabled = true;
@@ -302,8 +307,9 @@ document.addEventListener('submit', function(event) {
     resultBox.textContent = '正在檢查你的答案...';
   }
 
+  // 直接使用前端已知的查詢編號開始輪詢
+  checkAnswerResult(requestId);
 }, true);
-
 function checkAnswerResult(requestId) {
   const resultBox = document.getElementById('answer-result');
   const submitButton = document.getElementById('answer-submit');
