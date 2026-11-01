@@ -51,353 +51,59 @@
       border: 1px solid #54717a;
       border-radius: 16px;
       background: #193b46;
+      text-align: left;
     }
 
     .status {
       color: #d9e8e8;
       font-size: 14px;
+      text-align: center;
     }
 
-    .start-button {
+    .btn-custom {
       display: block;
       width: 100%;
-      margin-top: 24px;
-      padding: 16px;
+      margin-top: 20px;
+      padding: 14px;
       border: none;
       border-radius: 8px;
-      background: #d0b27b;
-      color: #172e35;
-      font-size: 17px;
+      background: #4b9295;
+      color: white;
+      font-size: 16px;
       font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .btn-custom:hover {
+      background: #5aa3a6;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #54717a;
+      margin: 10px 0;
+      font-size: 16px;
+      background: #102b35;
+      color: white;
     }
 
     .note {
       margin-top: 28px;
       color: #9eb5ba;
       font-size: 12px;
+      text-align: center;
     }
   </style>
 </head>
- 
-<script>
-  // 保留 Apps Script /exec 網址
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
-
-  // 取得網址中的關卡編號
-  const params = new URLSearchParams(window.location.search);
-  const stageId = params.get('stage_id');
-
-  function showStatus(message) {
-    const status = document.getElementById('api-status');
-    if (status) {
-      status.textContent = message;
-    }
-  }
-
-  // 避免外部網址或不安全內容被當成圖片載入
-  function safeImageUrl(value) {
-    try {
-      const url = new URL(value);
-      if (url.protocol === 'https:' || url.protocol === 'http:') {
-        return url.href;
-      }
-    } catch (error) {
-      // 無效網址不顯示圖片
-    }
-    return '';
-  }
-
-  // 避免試算表內容被當成 HTML 程式執行
-  function escapeHTML(value) {
-    return String(value ?? '').replace(/[&<>"']/g, function(char) {
-      return {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[char];
-    });
-  }
-
-  function loadGameData() {
-    const list = document.getElementById('stage-list');
-
-    if (!stageId || !/^[1-9]\d*$/.test(stageId)) {
-      showStatus('請使用正確的關卡網址進入遊戲。');
-      if (list) {
-        list.innerHTML = '<p>網址中缺少有效的關卡編號。</p>';
-      }
-      return;
-    }
-
-    showStatus('正在載入第 ' + stageId + ' 關...');
-
-    const callbackName = 'gameCallback';
-
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-
-      if (!data || !data.success || !data.stage) {
-        showStatus('無法讀取此關卡。');
-        list.innerHTML = '<p>此關卡不存在或尚未開放。</p>';
-        return;
-      }
-
-      const stage = data.stage;
-
-      showStatus('第 ' + escapeHTML(stage.stage_id) + ' 關載入成功！');
-
-      const taskType = stage.task_type === 'photo'
-        ? '拍照任務'
-        : '解謎任務';
-
-      const imageUrl = safeImageUrl(stage.image_url);
-
-      list.innerHTML = `
-        <div style="
-          padding:18px;
-          margin:12px 0;
-          border:1px solid #54717a;
-          border-radius:12px;
-          text-align:left;
-          background:rgba(255,255,255,0.05);
-        ">
-          <p style="color:#9bc5c8;">
-            ${taskType}
-          </p>
-
-          <h2>${escapeHTML(stage.title)}</h2>
-
-          <p>${escapeHTML(stage.story)}</p>
-
-          ${imageUrl ? `
-            <img
-              src="${escapeHTML(imageUrl)}"
-              alt="關卡圖片"
-              style="width:100%;border-radius:8px;margin:12px 0;"
-            >
-          ` : ''}
-
-          <hr style="border-color:#54717a;">
-
-          <h3>本關任務</h3>
-          <p>${escapeHTML(stage.question)}</p>
-
-          <details style="margin-top:16px;">
-            <summary>查看提示</summary>
-            <p>${escapeHTML(stage.hint)}</p>
-          </details>
-        <hr style="border-color:#54717a;margin-top:20px;">
-
-        <h3>提交答案</h3>
-
-        <form
-          id="answer-form"
-          action="${API_URL}"
-          method="POST"
-          target="dpp-answer-frame"
-        >
-          <input
-            type="hidden"
-            name="stage_id"
-            value="${escapeHTML(stage.stage_id)}"
-          >
-          <input type="hidden" name="request_id" id="answer-request-id">
-
-          <input
-            type="text"
-            name="answer"
-            id="player-answer"
-            placeholder="請輸入你的答案"
-            maxlength="200"
-            required
-            style="
-              width:100%;
-              box-sizing:border-box;
-              padding:12px;
-              border-radius:8px;
-              border:1px solid #54717a;
-              margin:10px 0;
-              font-size:16px;
-            "
-          >
-
-          <button
-            type="submit"
-            id="answer-submit"
-            style="
-              width:100%;
-              padding:12px;
-              border:0;
-              border-radius:8px;
-              background:#4b9295;
-              color:white;
-              font-size:16px;
-              cursor:pointer;
-            "
-          >
-            送出答案
-          </button>
-        </form>
-
-        <iframe
-          name="dpp-answer-frame"
-          id="dpp-answer-frame"
-          style="display:none;"
-        ></iframe>
-
-        <p id="answer-result" aria-live="polite"></p></div>
-      `;
-    };
-
-    const script = document.createElement('script');
-
-    script.src =
-      API_URL +
-      '?stage_id=' + encodeURIComponent(stageId) +
-      '&callback=' + callbackName +
-      '&t=' + Date.now();
-
-    script.onerror = function() {
-      delete window[callbackName];
-      showStatus('無法連接遊戲資料庫，請稍後再試。');
-    };
-
-    document.body.appendChild(script);
-  }
-
-  window.addEventListener('message', function(event) {
-    const iframe = document.getElementById('dpp-answer-frame');
-    if (!iframe || event.source !== iframe.contentWindow) return;
-
-    const message = event.data;
-    if (!message || message.type !== 'DPP_ANSWER_RESULT') return;
-
-    const result = message.data;
-    const resultBox = document.getElementById('answer-result');
-    const submitButton = document.getElementById('answer-submit');
-
-    if (resultBox) {
-      if (result && result.success && result.correct) {
-        resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
-        resultBox.style.color = '#7ee0a1';
-      } else {
-        resultBox.textContent = result && result.message
-          ? result.message
-          : '驗證失敗，請重新提交。';
-        resultBox.style.color = '#ffb0a0';
-      }
-    }
-
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = '送出答案';
-    }
-  });
-
-  document.addEventListener('submit', function(event) {
-    if (event.target.id !== 'answer-form') return;
-
-    const button = document.getElementById('answer-submit');
-    const resultBox = document.getElementById('answer-result');
-    const requestInput = document.getElementById('answer-request-id');
-
-    const requestId = crypto.randomUUID();
-    requestInput.value = requestId;
-
-    if (button) {
-      button.disabled = true;
-      button.textContent = '正在驗證...';
-    }
-
-    if (resultBox) {
-      resultBox.textContent = '正在檢查你的答案...';
-      resultBox.style.color = '#d9e8e8';
-    }
-
-    // 啟動備用輪詢，確保萬一 postMessage 沒接到時也能正常取得結果
-    checkAnswerResult(requestId);
-  }, true);
-
-  function checkAnswerResult(requestId) {
-    const resultBox = document.getElementById('answer-result');
-    const submitButton = document.getElementById('answer-submit');
-
-    if (!resultBox) return;
-
-    let attempts = 0;
-    const maxAttempts = 15;
-
-    function queryResult() {
-      attempts++;
-      const callbackName = 'answerResultCallback_' + Date.now();
-
-      window[callbackName] = function(result) {
-        delete window[callbackName];
-
-        if (result && result.pending) {
-          if (attempts < maxAttempts) {
-            setTimeout(queryResult, 1000);
-          } else {
-            resultBox.textContent = '驗證逾時，請重新提交。';
-            resultBox.style.color = '#ffb0a0';
-            if (submitButton) {
-              submitButton.disabled = false;
-              submitButton.textContent = '送出答案';
-            }
-          }
-          return;
-        }
-
-        if (result && result.success && result.correct) {
-          resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
-          resultBox.style.color = '#7ee0a1';
-        } else {
-          resultBox.textContent = result && result.message
-            ? result.message
-            : '驗證失敗，請重新提交。';
-          resultBox.style.color = '#ffb0a0';
-        }
-
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = '送出答案';
-        }
-      };
-
-      const script = document.createElement('script');
-      script.src = API_URL
-        + '?request_id=' + encodeURIComponent(requestId)
-        + '&callback=' + callbackName
-        + '&t=' + Date.now();
-
-      script.onerror = function() {
-        delete window[callbackName];
-        if (attempts < maxAttempts) {
-          setTimeout(queryResult, 1000);
-        } else {
-          resultBox.textContent = '無法取得驗證結果，請重新提交。';
-          resultBox.style.color = '#ffb0a0';
-          if (submitButton) {
-            submitButton.disabled = false;
-            submitButton.textContent = '送出答案';
-          }
-        }
-      };
-
-      document.body.appendChild(script);
-    }
-
-    queryResult();
-  }
-
-  window.addEventListener('load', loadGameData);
-</script>
 
 <body>
   <main class="container">
-    <div class="tag">DAPPENG BAY · QR MYSTERY GAME</div>
+    <div class="tag">DAPPENG BAY · MYSTERY GAME</div>
 
     <h1>大鵬灣實境解謎</h1>
 
@@ -407,27 +113,271 @@
     </p>
 
     <section class="panel">
-      <p class="status" id="api-status">
-        正在連接遊戲資料庫...
-      </p>
-
-      <h2>冒險即將開始</h2>
-
-      <p class="description">
-        請準備好手機，開啟定位功能，<br>
-        跟隨線索完成每一道挑戰。
-      </p>
-      
-      <div id="stage-list"></div>
-      
-      <button class="start-button" type="button">
-        即將開放
-      </button>
+      <p class="status" id="api-status">載入中...</p>
+      <div id="game-content"></div>
     </section>
 
     <p class="note">
       DAPPENG BAY · FIVE CHECKPOINTS
     </p>
   </main>
+
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
+
+    const params = new URLSearchParams(window.location.search);
+    let stageId = params.get('stage_id') || '1'; // 預設從第 1 關開始
+    let playerName = localStorage.getItem('dpp_player_name') || '';
+
+    function showStatus(msg) {
+      const statusEl = document.getElementById('api-status');
+      if (statusEl) statusEl.textContent = msg;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, function(char) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[char];
+      });
+    }
+
+    function initGame() {
+      // 如果還沒有填寫偵探名稱，先顯示註冊畫面
+      if (!playerName) {
+        showPlayerNamePrompt();
+        return;
+      }
+
+      if (Number(stageId) > 5) {
+        showEnding();
+        return;
+      }
+
+      loadStageData(stageId);
+    }
+
+    function showPlayerNamePrompt() {
+      showStatus('歡迎偵探');
+      const content = document.getElementById('game-content');
+      content.innerHTML = `
+        <h2 style="text-align:center;">請輸入你的偵探名稱</h2>
+        <p style="text-align:center; color:#d0dddf; font-size:14px;">準備好展開大鵬灣的解謎冒險了嗎？</p>
+        <form id="name-form">
+          <input type="text" id="input-player-name" placeholder="輸入偵探名稱..." maxlength="30" required>
+          <button type="submit" class="btn-custom">開始冒險</button>
+        </form>
+      `;
+
+      document.getElementById('name-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const nameVal = document.getElementById('input-player-name').value.trim();
+        if (nameVal) {
+          playerName = nameVal;
+          localStorage.setItem('dpp_player_name', playerName);
+          stageId = '1';
+          initGame();
+        }
+      });
+    }
+
+    function showEnding() {
+      showStatus('冒險圓滿結束');
+      const content = document.getElementById('game-content');
+      content.innerHTML = `
+        <h2 style="text-align:center; color:#7ee0a1;">🎉 恭喜 ${escapeHTML(playerName)} </h2>
+        <p style="text-align:center; line-height:1.8;">你已成功通過所有大鵬灣的考驗，解開了所有隱藏的秘密，完成了這趟精彩的實境解謎之旅！</p>
+        <button class="btn-custom" onclick="localStorage.removeItem('dpp_player_name'); location.href='?stage_id=1';">重新開始遊戲</button>
+      `;
+    }
+
+    function loadStageData(id) {
+      showStatus(`正在載入第 ${id} 關...`);
+      const callbackName = 'gameCallback_' + Date.now();
+
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+
+        if (!data || !data.success || !data.stage) {
+          showStatus('無法讀取此關卡。');
+          document.getElementById('game-content').innerHTML = '<p>此關卡不存在或尚未開放。</p>';
+          return;
+        }
+
+        const stage = data.stage;
+        showStatus(`偵探：${escapeHTML(playerName)} | 第 ${escapeHTML(stage.stage_id)} 關`);
+
+        const taskType = stage.task_type === 'photo' ? '拍照任務' : '解謎任務';
+        const imageUrl = stage.image_url ? stage.image_url : '';
+
+        const content = document.getElementById('game-content');
+        content.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="color:#9bc5c8; font-size:14px;">${taskType}</span>
+            <span style="color:#b6d8d5; font-size:13px;">關卡 ${stage.stage_id} / 5</span>
+          </div>
+
+          <h2 style="margin-top:0;">${escapeHTML(stage.title)}</h2>
+          <p>${escapeHTML(stage.story)}</p>
+
+          ${imageUrl ? `<img src="${escapeHTML(imageUrl)}" alt="關卡圖片" style="width:100%; border-radius:8px; margin:12px 0;">` : ''}
+
+          <hr style="border-color:#54717a; margin:16px 0;">
+
+          <h3>本關任務</h3>
+          <p>${escapeHTML(stage.question)}</p>
+
+          <details style="margin:16px 0; color:#d9e8e8;">
+            <summary style="cursor:pointer; color:#b6d8d5;">查看提示</summary>
+            <p style="margin-top:8px;">${escapeHTML(stage.hint)}</p>
+          </details>
+
+          <hr style="border-color:#54717a; margin:16px 0;">
+
+          <h3>提交答案</h3>
+          <form id="answer-form">
+            <input type="hidden" name="stage_id" id="form-stage-id" value="${escapeHTML(stage.stage_id)}">
+            <input type="hidden" name="request_id" id="answer-request-id">
+            <input type="text" name="answer" id="player-answer" placeholder="請輸入你的答案" maxlength="200" required>
+            <button type="submit" id="answer-submit" class="btn-custom">送出答案</button>
+          </form>
+
+          <p id="answer-result" aria-live="polite" style="margin-top:12px; font-weight:bold; text-align:center;"></p>
+          <div id="next-stage-container" style="margin-top:15px;"></div>
+        `;
+
+        setupFormListener(stage.next_stage_id);
+      };
+
+      const script = document.createElement('script');
+      script.src = API_URL + '?stage_id=' + encodeURIComponent(id) + '&callback=' + callbackName + '&t=' + Date.now();
+      script.onerror = function() {
+        delete window[callbackName];
+        showStatus('無法連接遊戲資料庫，請稍後再試。');
+      };
+      document.body.appendChild(script);
+    }
+
+    function setupFormListener(nextStageId) {
+      const form = document.getElementById('answer-form');
+      if (!form) return;
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('answer-submit');
+        const resultBox = document.getElementById('answer-result');
+        const requestInput = document.getElementById('answer-request-id');
+        const stageInputVal = document.getElementById('form-stage-id').value;
+        const answerVal = document.getElementById('player-answer').value;
+
+        const requestId = crypto.randomUUID();
+        requestInput.value = requestId;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '正在驗證...';
+        resultBox.textContent = '正在檢查你的答案...';
+        resultBox.style.color = '#d9e8e8';
+
+        // 發送 POST 請求驗證答案
+        fetch(API_URL, {
+          method: 'POST',
+          body: new URLSearchParams({
+            stage_id: stageInputVal,
+            answer: answerVal,
+            request_id: requestId,
+            format: 'json'
+          })
+        })
+        .then(res => res.json())
+        .then(result => {
+          handleValidationResult(result, nextStageId);
+        })
+        .catch(err => {
+          // 若有 CORS 限制，改用輪詢機制取得 Cache 結果
+          pollAnswerResult(requestId, nextStageId);
+        });
+      });
+    }
+
+    function pollAnswerResult(requestId, nextStageId) {
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      function query() {
+        attempts++;
+        const cbName = 'pollCb_' + Date.now();
+
+        window[cbName] = function(result) {
+          delete window[cbName];
+          if (result && result.pending) {
+            if (attempts < maxAttempts) {
+              setTimeout(query, 1000);
+            } else {
+              showErrorState('驗證逾時，請重新提交。');
+            }
+            return;
+          }
+          handleValidationResult(result, nextStageId);
+        };
+
+        const script = document.createElement('script');
+        script.src = API_URL + '?request_id=' + encodeURIComponent(requestId) + '&callback=' + cbName + '&t=' + Date.now();
+        script.onerror = function() {
+          delete window[cbName];
+          if (attempts < maxAttempts) {
+            setTimeout(query, 1000);
+          } else {
+            showErrorState('無法取得驗證結果。');
+          }
+        };
+        document.body.appendChild(script);
+      }
+      query();
+    }
+
+    function handleValidationResult(result, nextStageId) {
+      const resultBox = document.getElementById('answer-result');
+      const submitBtn = document.getElementById('answer-submit');
+      const nextContainer = document.getElementById('next-stage-container');
+
+      if (result && result.success && result.correct) {
+        resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
+        resultBox.style.color = '#7ee0a1';
+        submitBtn.style.display = 'none'; // 隱藏送出按鈕
+
+        // 產生進入下一關的按鈕
+        const targetNext = nextStageId && nextStageId !== '' ? nextStageId : (Number(stageId) + 1);
+        if (Number(targetNext) <= 5) {
+          nextContainer.innerHTML = `<button class="btn-custom" onclick="stageId='${targetNext}'; initGame();">前往第 ${targetNext} 關</button>`;
+        } else {
+          nextContainer.innerHTML = `<button class="btn-custom" onclick="stageId='6'; initGame();" style="background:#d0b27b; color:#172e35;">查看結局</button>`;
+        }
+      } else {
+        resultBox.textContent = result && result.message ? result.message : '答案不正確，請再試一次。';
+        resultBox.style.color = '#ffb0a0';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送出答案';
+      }
+    }
+
+    function showErrorState(msg) {
+      const resultBox = document.getElementById('answer-result');
+      const submitBtn = document.getElementById('answer-submit');
+      if (resultBox) {
+        resultBox.textContent = msg;
+        resultBox.style.color = '#ffb0a0';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送出答案';
+      }
+    }
+
+    window.addEventListener('load', initGame);
+  </script>
 </body>
 </html>
