@@ -102,7 +102,7 @@
 
     /* 字卡排序樣式 */
     .card-slot-container {
-      min-height: 60px;
+      min-height: 64px;
       background: #102b35;
       border: 2px dashed #54717a;
       border-radius: 8px;
@@ -127,7 +127,7 @@
       background: #d0b27b;
       color: #172e35;
       font-weight: bold;
-      padding: 10px 16px;
+      padding: 10px 14px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 16px;
@@ -251,10 +251,20 @@
     function showEnding() {
       showStatus('冒險圓滿結束');
       const content = document.getElementById('game-content');
+      const cardType = localStorage.getItem('dpp_stage3_card') || '朋';
+
+      let endingTitle = cardType === '損' ? '隱藏結局：損友認證' : '一般結局：好朋友認證';
+      let endingStory = cardType === '損'
+        ? `小屋的門打開，好哥探出頭，短褲還是那一條。<br><br><b>鯊魚人：</b>「我只是想當你的損友。」<br><b>好哥：</b>「……你先幫我把緞帶解開。」<br><b>鯊魚人：</b>「他跟我說話了！一定是願意跟我做損友了！」`
+        : `小屋的門打開，好哥探出頭，短褲還是那一條。<br><br><b>鯊魚人：</b>「我只是想當你的朋友。」<br><b>好哥：</b>「那你下次直接說就好，不用綁架我。」`;
+
       content.innerHTML = `
-        <h2 style="text-align:center; color:#7ee0a1;">🎉 恭喜 ${escapeHTML(playerName)} </h2>
-        <p style="text-align:center; line-height:1.8;">你已成功通過所有大鵬灣的考驗，解開了所有隱藏的秘密，完成了這趟精彩的實境解謎之旅！</p>
-        <button class="btn-custom" onclick="localStorage.removeItem('dpp_player_name'); location.reload();">重新開始遊戲</button>
+        <h2 style="text-align:center; color:#7ee0a1;">🎉 ${endingTitle}</h2>
+        <p style="text-align:center; color:#b6d8d5; font-size:15px; margin-bottom:15px;">偵探 ${escapeHTML(playerName)} 成功解開真相！</p>
+        <div style="background:rgba(255,255,255,0.05); padding:16px; border-radius:8px; line-height:1.8; margin-bottom:20px;">
+          ${endingStory}
+        </div>
+        <button class="btn-custom" onclick="localStorage.clear(); location.reload();">重新開始遊戲</button>
       `;
     }
 
@@ -275,7 +285,7 @@
         showStatus(`偵探：${escapeHTML(playerName)} | 第 ${escapeHTML(stage.stage_id)} 關`);
 
         const isChoice = stage.task_type === 'choice';
-        const isPuzzle = stage.stage_id == '5'; // 第 5 關為字卡排序題
+        const isPuzzle = stage.stage_id == '5'; // 第 5 關字卡排序題
         const taskTypeName = isChoice ? '選擇題任務' : (isPuzzle ? '字卡排序任務' : '解謎任務');
         const imageUrl = stage.image_url ? stage.image_url : '';
 
@@ -289,12 +299,14 @@
           }
 
           optionsHTML = choices.map(opt => `
-            <button type="button" class="btn-choice" onclick="submitAnswer('${escapeHTML(stage.stage_id)}', '${escapeHTML(opt)}', '${escapeHTML(stage.next_stage_id)}')">
+            <button type="button" class="btn-choice" onclick="submitChoiceAnswer('${escapeHTML(stage.stage_id)}', '${escapeHTML(opt)}', '${escapeHTML(stage.next_stage_id)}')">
               ${escapeHTML(opt)}
             </button>
           `).join('');
         } else if (isPuzzle) {
-          // 第 5 關字卡互動介面
+          // 第 5 關字卡包含：【當你】、【我想】、【友】、以及第 3 關留下的【朋】或【損】
+          const thirdStageCard = localStorage.getItem('dpp_stage3_card') || '朋';
+          
           optionsHTML = `
             <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">已排列的句子：</div>
             <div id="card-slot" class="card-slot-container">
@@ -302,11 +314,10 @@
             </div>
             <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">可用字卡（點擊放入）：</div>
             <div id="card-pool" class="card-pool-container">
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '朋')">朋</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '想')">想</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '你')">你</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '我')">我</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '當')">當</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '當你')">當你</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '我想')">我想</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '友')">友</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '${thirdStageCard}')">${thirdStageCard}</button>
             </div>
             <button type="button" id="answer-submit" class="btn-custom" onclick="submitPuzzle('${escapeHTML(stage.stage_id)}', '${escapeHTML(stage.next_stage_id)}')">送出答案</button>
           `;
@@ -372,8 +383,20 @@
       document.body.appendChild(script);
     }
 
+    // 處理第 3 關選擇與分支字卡紀錄
+    function submitChoiceAnswer(currentStageId, answerVal, nextStageId) {
+      if (currentStageId == '3') {
+        if (answerVal === '肺癌的代表色是白色') {
+          localStorage.setItem('dpp_stage3_card', '朋');
+        } else {
+          localStorage.setItem('dpp_stage3_card', '損');
+        }
+      }
+      submitAnswer(currentStageId, answerVal, nextStageId);
+    }
+
     // 第 5 關字卡互動邏輯
-    function pickCard(btn, char) {
+    function pickCard(btn, text) {
       const slot = document.getElementById('card-slot');
       const placeholder = document.getElementById('slot-placeholder');
       if (placeholder) placeholder.remove();
@@ -381,9 +404,8 @@
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'puzzle-card';
-      card.textContent = char;
+      card.textContent = text;
       card.onclick = function() {
-        // 點擊已選字卡放回可用區
         document.getElementById('card-pool').appendChild(card);
         card.remove();
         if (slot.children.length === 0) {
