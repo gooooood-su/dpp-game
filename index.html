@@ -400,7 +400,6 @@
         });
       });
 
-      // 監聽已排列區，點擊可直接退回可用區
       slot.addEventListener('click', function(e) {
         if (e.target.classList.contains('puzzle-card')) {
           pool.appendChild(e.target);
@@ -412,11 +411,14 @@
     }
 
     function submitChoiceAnswer(currentStageId, answerVal, nextStageId) {
+      // 判斷第 3 關的選擇與字卡派發
       if (currentStageId == '3') {
-        if (answerVal === '肺癌的代表色是白色') {
-          localStorage.setItem('dpp_stage3_card', '朋');
-        } else {
+        if (answerVal === '胃癌的代表色是黃色') {
+          // 選錯了，給予「損」字
           localStorage.setItem('dpp_stage3_card', '損');
+        } else {
+          // 答對了，給予「朋」字
+          localStorage.setItem('dpp_stage3_card', '朋');
         }
       }
       submitAnswer(currentStageId, answerVal, nextStageId);
