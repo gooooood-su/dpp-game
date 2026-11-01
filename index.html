@@ -78,11 +78,15 @@
     }
   </style>
 </head>
+ 
 <script>
-  // Google Apps Script Web App 網址
+  // 保留你原本的 Apps Script /exec 網址
   const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
 
-  // 顯示 API 連線狀態
+  // 取得網址中的關卡編號
+  const params = new URLSearchParams(window.location.search);
+  const stageId = params.get('stage_id');
+
   function showStatus(message) {
     const status = document.getElementById('api-status');
     if (status) {
@@ -90,62 +94,20 @@
     }
   }
 
-  // 建立 JSONP 請求
-  function loadGameData() {
-    showStatus('正在連接遊戲資料庫...');
-
-    const callbackName = 'gameCallback';
-
-    window[callbackName] = function(data) {
-      if (data.success) {
-        showStatus('遊戲資料庫連線成功！');
-
-        console.log('取得的關卡資料：', data.stages);
-
-        const list = document.getElementById('stage-list');
-
-        if (data.stages.length === 0) {
-          list.innerHTML = '<p>目前尚未開放關卡。</p>';
-          return;
-        }
-
-        list.innerHTML = data.stages
-          .filter(stage => String(stage.enabled).toUpperCase() === 'TRUE')
-          .map(stage => `
-            <div style="
-              padding:12px;
-              margin:10px 0;
-              border:1px solid #54717a;
-              border-radius:8px;
-              text-align:left;
-            ">
-              <strong>${escapeHTML(stage.title)}</strong>
-              <p>${escapeHTML(stage.story)}</p>
-            </div>
-          `).join('');
-
-      } else {
-        showStatus('遊戲資料讀取失敗。');
+  // 避免外部網址或不安全內容被當成圖片載入
+  function safeImageUrl(value) {
+    try {
+      const url = new URL(value);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        return url.href;
       }
-
-      delete window[callbackName];
-    };
-
-    const script = document.createElement('script');
-
-    script.src = API_URL +
-      '?callback=' + callbackName +
-      '&t=' + Date.now();
-
-    script.onerror = function() {
-      showStatus('無法連接遊戲資料庫，請稍後再試。');
-      delete window[callbackName];
-    };
-
-    document.body.appendChild(script);
+    } catch (error) {
+      // 無效網址不顯示圖片
+    }
+    return '';
   }
 
-  // 避免試算表內容被當成 HTML 執行
+  // 避免試算表內容被當成 HTML 程式執行
   function escapeHTML(value) {
     return String(value ?? '').replace(/[&<>"']/g, function(char) {
       return {
@@ -158,10 +120,97 @@
     });
   }
 
-  // 網頁載入後自動讀取資料
+  function loadGameData() {
+    const list = document.getElementById('stage-list');
+
+    if (!stageId || !/^[1-9]\d*$/.test(stageId)) {
+      showStatus('請使用正確的關卡網址進入遊戲。');
+      if (list) {
+        list.innerHTML = '<p>網址中缺少有效的關卡編號。</p>';
+      }
+      return;
+    }
+
+    showStatus('正在載入第 ' + stageId + ' 關...');
+
+    const callbackName = 'gameCallback';
+
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+
+      if (!data || !data.success || !data.stage) {
+        showStatus('無法讀取此關卡。');
+        list.innerHTML = '<p>此關卡不存在或尚未開放。</p>';
+        return;
+      }
+
+      const stage = data.stage;
+
+      showStatus('第 ' + escapeHTML(stage.stage_id) + ' 關載入成功！');
+
+      const taskType = stage.task_type === 'photo'
+        ? '拍照任務'
+        : '解謎任務';
+
+      const imageUrl = safeImageUrl(stage.image_url);
+
+      list.innerHTML = `
+        <div style="
+          padding:18px;
+          margin:12px 0;
+          border:1px solid #54717a;
+          border-radius:12px;
+          text-align:left;
+          background:rgba(255,255,255,0.05);
+        ">
+          <p style="color:#9bc5c8;">
+            ${taskType}
+          </p>
+
+          <h2>${escapeHTML(stage.title)}</h2>
+
+          <p>${escapeHTML(stage.story)}</p>
+
+          ${imageUrl ? `
+            <img
+              src="${escapeHTML(imageUrl)}"
+              alt="關卡圖片"
+              style="width:100%;border-radius:8px;margin:12px 0;"
+            >
+          ` : ''}
+
+          <hr style="border-color:#54717a;">
+
+          <h3>本關任務</h3>
+          <p>${escapeHTML(stage.question)}</p>
+
+          <details style="margin-top:16px;">
+            <summary>查看提示</summary>
+            <p>${escapeHTML(stage.hint)}</p>
+          </details>
+        </div>
+      `;
+    };
+
+    const script = document.createElement('script');
+
+    script.src =
+      API_URL +
+      '?stage_id=' + encodeURIComponent(stageId) +
+      '&callback=' + callbackName +
+      '&t=' + Date.now();
+
+    script.onerror = function() {
+      delete window[callbackName];
+      showStatus('無法連接遊戲資料庫，請稍後再試。');
+    };
+
+    document.body.appendChild(script);
+  }
+
   window.addEventListener('load', loadGameData);
 </script>
-  
+
   <body>
   <main class="container">
 
