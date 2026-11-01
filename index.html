@@ -266,42 +266,23 @@
     document.body.appendChild(script);
   }
 
- window.addEventListener('message', function(event) {
 
+window.addEventListener('message', function(event) {
   const iframe = document.getElementById('dpp-answer-frame');
 
-  // 只接受指定答案提交 iframe 傳來的訊息
-  if (!iframe || event.source !== iframe.contentWindow) {
-    return;
-  }
+  if (!iframe || event.source !== iframe.contentWindow) return;
 
   const message = event.data;
 
-  if (!message || message.type !== 'DPP_ANSWER_RESULT') {
-    return;
-  }
+  if (!message || message.type !== 'DPP_ANSWER_SUBMITTED') return;
 
-  const result = message.data;
-  const resultBox = document.getElementById('answer-result');
-  const submitButton = document.getElementById('answer-submit');
+  const requestId = message.requestId;
 
-  if (!resultBox || !result) {
-    return;
-  }
+  if (!requestId) return;
 
-  if (result.success && result.correct) {
-    resultBox.textContent = '🎉 答對了！' + result.message;
-    resultBox.style.color = '#7ee0a1';
-  } else {
-    resultBox.textContent = result.message || '提交失敗，請再試一次。';
-    resultBox.style.color = '#ffb0a0';
-  }
-
-  if (submitButton) {
-    submitButton.disabled = false;
-    submitButton.textContent = '送出答案';
-  }
+  checkAnswerResult(requestId);
 });
+
 
 document.addEventListener('submit', function(event) {
 
@@ -322,6 +303,81 @@ document.addEventListener('submit', function(event) {
   }
 
 }, true);
+
+function checkAnswerResult(requestId) {
+  const resultBox = document.getElementById('answer-result');
+  const submitButton = document.getElementById('answer-submit');
+
+  if (!resultBox) return;
+
+  resultBox.textContent = '正在檢查你的答案...';
+
+  let attempts = 0;
+  const maxAttempts = 15;
+
+  function queryResult() {
+    attempts++;
+
+    const callbackName = 'answerResultCallback';
+
+    window[callbackName] = function(result) {
+      delete window[callbackName];
+
+      if (result && result.pending) {
+        if (attempts < maxAttempts) {
+          setTimeout(queryResult, 1000);
+        } else {
+          resultBox.textContent = '驗證逾時，請重新提交。';
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = '送出答案';
+          }
+        }
+        return;
+      }
+
+      if (result && result.success && result.correct) {
+        resultBox.textContent = '🎉 答對了！' + result.message;
+        resultBox.style.color = '#7ee0a1';
+      } else {
+        resultBox.textContent = result && result.message
+          ? result.message
+          : '驗證失敗，請重新提交。';
+        resultBox.style.color = '#ffb0a0';
+      }
+
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = '送出答案';
+      }
+    };
+
+    const script = document.createElement('script');
+
+    script.src = API_URL
+      + '?request_id=' + encodeURIComponent(requestId)
+      + '&callback=' + callbackName
+      + '&t=' + Date.now();
+
+    script.onerror = function() {
+      delete window[callbackName];
+
+      if (attempts < maxAttempts) {
+        setTimeout(queryResult, 1000);
+      } else {
+        resultBox.textContent = '無法取得驗證結果，請重新提交。';
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = '送出答案';
+        }
+      }
+    };
+
+    document.body.appendChild(script);
+  }
+
+  queryResult();
+}
 
 window.addEventListener('load', loadGameData);
 </script>
