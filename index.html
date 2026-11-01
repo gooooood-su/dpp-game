@@ -295,6 +295,7 @@ document.addEventListener('submit', function(event) {
 
   // 產生本次提交專用的查詢編號
   const requestId = crypto.randomUUID();
+  console.log('答案表單已觸發 submit，requestId：', requestId);
 
   requestInput.value = requestId;
 
