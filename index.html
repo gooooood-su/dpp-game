@@ -80,7 +80,7 @@
 </head>
  
 <script>
-  // 保留你原本的 Apps Script /exec 網址
+  // 保留 Apps Script /exec 網址
   const API_URL = 'https://script.google.com/macros/s/AKfycbwBSBSb11DZzirmff-DNdhGFw0t4ER_R7lmQAz2bAF61LjmOrMU2HEfKIPpOxb6hYJknA/exec';
 
   // 取得網址中的關卡編號
@@ -190,64 +190,64 @@
           </details>
         <hr style="border-color:#54717a;margin-top:20px;">
 
-<h3>提交答案</h3>
+        <h3>提交答案</h3>
 
-<form
-  id="answer-form"
-  action="${API_URL}"
-  method="POST"
-  target="dpp-answer-frame"
->
-  <input
-    type="hidden"
-    name="stage_id"
-    value="${escapeHTML(stage.stage_id)}"
-  >
-  <input type="hidden" name="request_id" id="answer-request-id">
+        <form
+          id="answer-form"
+          action="${API_URL}"
+          method="POST"
+          target="dpp-answer-frame"
+        >
+          <input
+            type="hidden"
+            name="stage_id"
+            value="${escapeHTML(stage.stage_id)}"
+          >
+          <input type="hidden" name="request_id" id="answer-request-id">
 
-  <input
-    type="text"
-    name="answer"
-    id="player-answer"
-    placeholder="請輸入你的答案"
-    maxlength="200"
-    required
-    style="
-      width:100%;
-      box-sizing:border-box;
-      padding:12px;
-      border-radius:8px;
-      border:1px solid #54717a;
-      margin:10px 0;
-      font-size:16px;
-    "
-  >
+          <input
+            type="text"
+            name="answer"
+            id="player-answer"
+            placeholder="請輸入你的答案"
+            maxlength="200"
+            required
+            style="
+              width:100%;
+              box-sizing:border-box;
+              padding:12px;
+              border-radius:8px;
+              border:1px solid #54717a;
+              margin:10px 0;
+              font-size:16px;
+            "
+          >
 
-  <button
-    type="submit"
-    id="answer-submit"
-    style="
-      width:100%;
-      padding:12px;
-      border:0;
-      border-radius:8px;
-      background:#4b9295;
-      color:white;
-      font-size:16px;
-      cursor:pointer;
-    "
-  >
-    送出答案
-  </button>
-</form>
+          <button
+            type="submit"
+            id="answer-submit"
+            style="
+              width:100%;
+              padding:12px;
+              border:0;
+              border-radius:8px;
+              background:#4b9295;
+              color:white;
+              font-size:16px;
+              cursor:pointer;
+            "
+          >
+            送出答案
+          </button>
+        </form>
 
-<iframe
-  name="dpp-answer-frame"
-  id="dpp-answer-frame"
-  style="display:none;"
-></iframe>
+        <iframe
+          name="dpp-answer-frame"
+          id="dpp-answer-frame"
+          style="display:none;"
+        ></iframe>
 
-<p id="answer-result" aria-live="polite"></p></div>
+        <p id="answer-result" aria-live="polite"></p></div>
       `;
     };
 
@@ -267,84 +267,20 @@
     document.body.appendChild(script);
   }
 
+  window.addEventListener('message', function(event) {
+    const iframe = document.getElementById('dpp-answer-frame');
+    if (!iframe || event.source !== iframe.contentWindow) return;
 
-window.addEventListener('message', function(event) {
-  const iframe = document.getElementById('dpp-answer-frame');
+    const message = event.data;
+    if (!message || message.type !== 'DPP_ANSWER_RESULT') return;
 
-  if (!iframe || event.source !== iframe.contentWindow) return;
+    const result = message.data;
+    const resultBox = document.getElementById('answer-result');
+    const submitButton = document.getElementById('answer-submit');
 
-  const message = event.data;
-
-  if (!message || message.type !== 'DPP_ANSWER_SUBMITTED') return;
-
-  const requestId = message.requestId;
-
-  if (!requestId) return;
-
-  checkAnswerResult(requestId);
-});
-
-
-document.addEventListener('submit', function(event) {
-  if (event.target.id !== 'answer-form') return;
-
-  const form = event.target;
-  const button = document.getElementById('answer-submit');
-  const resultBox = document.getElementById('answer-result');
-  const requestInput = document.getElementById('answer-request-id');
-
-  // 產生本次提交專用的查詢編號
-  const requestId = crypto.randomUUID();
-  console.log('答案表單已觸發 submit，requestId：', requestId);
-
-  requestInput.value = requestId;
-
-  if (button) {
-    button.disabled = true;
-    button.textContent = '正在驗證...';
-  }
-
-  if (resultBox) {
-    resultBox.textContent = '正在檢查你的答案...';
-  }
-
-  // 直接使用前端已知的查詢編號開始輪詢
-  checkAnswerResult(requestId);
-}, true);
-function checkAnswerResult(requestId) {
-  const resultBox = document.getElementById('answer-result');
-  const submitButton = document.getElementById('answer-submit');
-
-  if (!resultBox) return;
-
-  resultBox.textContent = '正在檢查你的答案...';
-
-  let attempts = 0;
-  const maxAttempts = 15;
-
-  function queryResult() {
-    attempts++;
-
-    const callbackName = 'answerResultCallback';
-
-    window[callbackName] = function(result) {
-      delete window[callbackName];
-
-      if (result && result.pending) {
-        if (attempts < maxAttempts) {
-          setTimeout(queryResult, 1000);
-        } else {
-          resultBox.textContent = '驗證逾時，請重新提交。';
-          if (submitButton) {
-            submitButton.disabled = false;
-            submitButton.textContent = '送出答案';
-          }
-        }
-        return;
-      }
-
+    if (resultBox) {
       if (result && result.success && result.correct) {
-        resultBox.textContent = '🎉 答對了！' + result.message;
+        resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
         resultBox.style.color = '#7ee0a1';
       } else {
         resultBox.textContent = result && result.message
@@ -352,46 +288,115 @@ function checkAnswerResult(requestId) {
           : '驗證失敗，請重新提交。';
         resultBox.style.color = '#ffb0a0';
       }
+    }
 
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = '送出答案';
-      }
-    };
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = '送出答案';
+    }
+  });
 
-    const script = document.createElement('script');
+  document.addEventListener('submit', function(event) {
+    if (event.target.id !== 'answer-form') return;
 
-    script.src = API_URL
-      + '?request_id=' + encodeURIComponent(requestId)
-      + '&callback=' + callbackName
-      + '&t=' + Date.now();
+    const button = document.getElementById('answer-submit');
+    const resultBox = document.getElementById('answer-result');
+    const requestInput = document.getElementById('answer-request-id');
 
-    script.onerror = function() {
-      delete window[callbackName];
+    const requestId = crypto.randomUUID();
+    requestInput.value = requestId;
 
-      if (attempts < maxAttempts) {
-        setTimeout(queryResult, 1000);
-      } else {
-        resultBox.textContent = '無法取得驗證結果，請重新提交。';
+    if (button) {
+      button.disabled = true;
+      button.textContent = '正在驗證...';
+    }
+
+    if (resultBox) {
+      resultBox.textContent = '正在檢查你的答案...';
+      resultBox.style.color = '#d9e8e8';
+    }
+
+    // 啟動備用輪詢，確保萬一 postMessage 沒接到時也能正常取得結果
+    checkAnswerResult(requestId);
+  }, true);
+
+  function checkAnswerResult(requestId) {
+    const resultBox = document.getElementById('answer-result');
+    const submitButton = document.getElementById('answer-submit');
+
+    if (!resultBox) return;
+
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    function queryResult() {
+      attempts++;
+      const callbackName = 'answerResultCallback_' + Date.now();
+
+      window[callbackName] = function(result) {
+        delete window[callbackName];
+
+        if (result && result.pending) {
+          if (attempts < maxAttempts) {
+            setTimeout(queryResult, 1000);
+          } else {
+            resultBox.textContent = '驗證逾時，請重新提交。';
+            resultBox.style.color = '#ffb0a0';
+            if (submitButton) {
+              submitButton.disabled = false;
+              submitButton.textContent = '送出答案';
+            }
+          }
+          return;
+        }
+
+        if (result && result.success && result.correct) {
+          resultBox.textContent = '🎉 答對了！ ' + (result.message || '');
+          resultBox.style.color = '#7ee0a1';
+        } else {
+          resultBox.textContent = result && result.message
+            ? result.message
+            : '驗證失敗，請重新提交。';
+          resultBox.style.color = '#ffb0a0';
+        }
+
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = '送出答案';
         }
-      }
-    };
+      };
 
-    document.body.appendChild(script);
+      const script = document.createElement('script');
+      script.src = API_URL
+        + '?request_id=' + encodeURIComponent(requestId)
+        + '&callback=' + callbackName
+        + '&t=' + Date.now();
+
+      script.onerror = function() {
+        delete window[callbackName];
+        if (attempts < maxAttempts) {
+          setTimeout(queryResult, 1000);
+        } else {
+          resultBox.textContent = '無法取得驗證結果，請重新提交。';
+          resultBox.style.color = '#ffb0a0';
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = '送出答案';
+          }
+        }
+      };
+
+      document.body.appendChild(script);
+    }
+
+    queryResult();
   }
 
-  queryResult();
-}
-
-window.addEventListener('load', loadGameData);
+  window.addEventListener('load', loadGameData);
 </script>
 
-  <body>
+<body>
   <main class="container">
-
     <div class="tag">DAPPENG BAY · QR MYSTERY GAME</div>
 
     <h1>大鵬灣實境解謎</h1>
@@ -402,10 +407,9 @@ window.addEventListener('load', loadGameData);
     </p>
 
     <section class="panel">
-
       <p class="status" id="api-status">
-  正在連接遊戲資料庫...
-</p>
+        正在連接遊戲資料庫...
+      </p>
 
       <h2>冒險即將開始</h2>
 
@@ -413,17 +417,17 @@ window.addEventListener('load', loadGameData);
         請準備好手機，開啟定位功能，<br>
         跟隨線索完成每一道挑戰。
       </p>
-<div id="stage-list"></div>
+      
+      <div id="stage-list"></div>
+      
       <button class="start-button" type="button">
         即將開放
       </button>
-
     </section>
 
     <p class="note">
       DAPPENG BAY · FIVE CHECKPOINTS
     </p>
-
   </main>
 </body>
 </html>
