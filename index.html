@@ -304,20 +304,19 @@
             </button>
           `).join('');
         } else if (isPuzzle) {
-          // 第 5 關固定 5 張大字卡：【我想】、【當你】、【朋】（或【損】）、【友】（此處提供隨機打亂的 4/5 張卡片：我想、當你、朋/損、友，或是完整 4 張）
           const thirdStageCard = localStorage.getItem('dpp_stage3_card') || '朋';
           
           optionsHTML = `
-            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">已排列的句子：</div>
+            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">已排列的句子（點擊可退回）：</div>
             <div id="card-slot" class="card-slot-container">
               <span style="color:#7ee0a1; font-size:13px;" id="slot-placeholder">點擊下方字卡進行排列</span>
             </div>
-            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">可用字卡（點擊放入）：</div>
+            <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">可用字卡：</div>
             <div id="card-pool" class="card-pool-container">
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '我想')">我想</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '當你')">當你</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '${thirdStageCard}')">${thirdStageCard}</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '友')">友</button>
+              <button type="button" class="puzzle-card" data-text="我想">我想</button>
+              <button type="button" class="puzzle-card" data-text="當你">當你</button>
+              <button type="button" class="puzzle-card" data-text="${thirdStageCard}">${thirdStageCard}</button>
+              <button type="button" class="puzzle-card" data-text="友">友</button>
             </div>
             <button type="button" id="answer-submit" class="btn-custom" onclick="submitPuzzle('${escapeHTML(stage.stage_id)}', '${escapeHTML(stage.next_stage_id)}')">送出答案</button>
           `;
@@ -363,6 +362,10 @@
           <div id="next-stage-container" style="margin-top:15px;"></div>
         `;
 
+        if (isPuzzle) {
+          setupPuzzleCards();
+        }
+
         if (!isChoice && !isPuzzle) {
           document.getElementById('answer-form').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -383,6 +386,31 @@
       document.body.appendChild(script);
     }
 
+    function setupPuzzleCards() {
+      const pool = document.getElementById('card-pool');
+      const slot = document.getElementById('card-slot');
+      const placeholder = document.getElementById('slot-placeholder');
+
+      pool.querySelectorAll('.puzzle-card').forEach(card => {
+        card.addEventListener('click', function() {
+          if (placeholder && placeholder.parentNode) {
+            placeholder.remove();
+          }
+          slot.appendChild(card);
+        });
+      });
+
+      // 監聽已排列區，點擊可直接退回可用區
+      slot.addEventListener('click', function(e) {
+        if (e.target.classList.contains('puzzle-card')) {
+          pool.appendChild(e.target);
+          if (slot.children.length === 0) {
+            slot.innerHTML = '<span style="color:#7ee0a1; font-size:13px;" id="slot-placeholder">點擊下方字卡進行排列</span>';
+          }
+        }
+      });
+    }
+
     function submitChoiceAnswer(currentStageId, answerVal, nextStageId) {
       if (currentStageId == '3') {
         if (answerVal === '肺癌的代表色是白色') {
@@ -394,32 +422,12 @@
       submitAnswer(currentStageId, answerVal, nextStageId);
     }
 
-    function pickCard(btn, text) {
-      const slot = document.getElementById('card-slot');
-      const placeholder = document.getElementById('slot-placeholder');
-      if (placeholder) placeholder.remove();
-
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'puzzle-card';
-      card.textContent = text;
-      card.onclick = function() {
-        document.getElementById('card-pool').appendChild(card);
-        card.remove();
-        if (slot.children.length === 0) {
-          slot.innerHTML = '<span style="color:#7ee0a1; font-size:13px;" id="slot-placeholder">點擊下方字卡進行排列</span>';
-        }
-      };
-      slot.appendChild(card);
-      btn.remove();
-    }
-
     function submitPuzzle(currentStageId, nextStageId) {
       const slot = document.getElementById('card-slot');
       const cards = slot.getElementsByClassName('puzzle-card');
       let combinedAnswer = '';
       for (let c of cards) {
-        combinedAnswer += c.textContent;
+        combinedAnswer += c.getAttribute('data-text');
       }
 
       if (!combinedAnswer) {
