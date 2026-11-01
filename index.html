@@ -127,7 +127,7 @@
       background: #d0b27b;
       color: #172e35;
       font-weight: bold;
-      padding: 10px 14px;
+      padding: 10px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 16px;
@@ -304,7 +304,7 @@
             </button>
           `).join('');
         } else if (isPuzzle) {
-          // 第 5 關字卡包含：【當你】、【我想】、【友】、以及第 3 關留下的【朋】或【損】
+          // 第 5 關固定 5 張大字卡：【我想】、【當你】、【朋】（或【損】）、【友】（此處提供隨機打亂的 4/5 張卡片：我想、當你、朋/損、友，或是完整 4 張）
           const thirdStageCard = localStorage.getItem('dpp_stage3_card') || '朋';
           
           optionsHTML = `
@@ -314,10 +314,10 @@
             </div>
             <div style="font-size:14px; color:#b6d8d5; margin-bottom:6px;">可用字卡（點擊放入）：</div>
             <div id="card-pool" class="card-pool-container">
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '當你')">當你</button>
               <button type="button" class="puzzle-card" onclick="pickCard(this, '我想')">我想</button>
-              <button type="button" class="puzzle-card" onclick="pickCard(this, '友')">友</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '當你')">當你</button>
               <button type="button" class="puzzle-card" onclick="pickCard(this, '${thirdStageCard}')">${thirdStageCard}</button>
+              <button type="button" class="puzzle-card" onclick="pickCard(this, '友')">友</button>
             </div>
             <button type="button" id="answer-submit" class="btn-custom" onclick="submitPuzzle('${escapeHTML(stage.stage_id)}', '${escapeHTML(stage.next_stage_id)}')">送出答案</button>
           `;
@@ -383,7 +383,6 @@
       document.body.appendChild(script);
     }
 
-    // 處理第 3 關選擇與分支字卡紀錄
     function submitChoiceAnswer(currentStageId, answerVal, nextStageId) {
       if (currentStageId == '3') {
         if (answerVal === '肺癌的代表色是白色') {
@@ -395,7 +394,6 @@
       submitAnswer(currentStageId, answerVal, nextStageId);
     }
 
-    // 第 5 關字卡互動邏輯
     function pickCard(btn, text) {
       const slot = document.getElementById('card-slot');
       const placeholder = document.getElementById('slot-placeholder');
